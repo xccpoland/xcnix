@@ -44,6 +44,7 @@ pkgs.writers.writePython3Bin "xcnix" {
       }
   }
 
+
   def verify_package(package_name):
       pkg_lower = package_name.lower()
       if pkg_lower in SPECIAL_MODULES or pkg_lower in DESKTOP_ENVIRONMENTS:
@@ -51,16 +52,23 @@ pkgs.writers.writePython3Bin "xcnix" {
       print(f"Checking if '{package_name}' exists in nixpkgs...")
       try:
           if shutil.which("nix-search"):
-              result = subprocess.run(["nix-search", "--json", package_name], capture_output=True, text=True)
+              result = subprocess.run(
+                  ["nix-search", "--json", package_name],
+                  capture_output=True, text=True
+              )
               if package_name in result.stdout:
                   return True
-          result = subprocess.run(["nix-env", "-qaP", f"^{package_name}$"], capture_output=True, text=True)
+          result = subprocess.run(
+              ["nix-env", "-qaP", f"^{package_name}$"],
+              capture_output=True, text=True
+          )
           if result.stdout.strip():
               return True
       except Exception:
           pass
       print(f"❌ Error: Package '{package_name}' could not be verified.")
       return False
+
 
   def load_config():
       if not os.path.exists(CONFIG_PATH):
@@ -69,6 +77,7 @@ pkgs.writers.writePython3Bin "xcnix" {
       with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
           return f.readlines()
 
+
   def save_config(lines):
       try:
           shutil.copyfile(CONFIG_PATH, BACKUP_PATH)
@@ -76,6 +85,7 @@ pkgs.writers.writePython3Bin "xcnix" {
           print(f"Warning: Could not create backup file: {e}")
       with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
           f.writelines(lines)
+
 
   def find_system_packages_bounds(lines):
       start_idx, end_idx = -1, -1
@@ -88,16 +98,19 @@ pkgs.writers.writePython3Bin "xcnix" {
               in_block = True
           if in_block:
               brace_count += clean.count("[") - clean.count("]")
-              if brace_count == 0 and "[" in lines[start_idx] or (idx != start_idx and brace_count <= 0):
+              if (brace_count == 0 and "[" in lines[start_idx]) or (
+                  idx != start_idx and brace_count <= 0
+              ):
                   end_idx = idx
                   break
       return start_idx, end_idx
+
 
   def list_everything():
       lines = load_config()
       content = "".join(lines)
       print("========================================")
-      print(f"       System Configuration Status      ")
+      print("       System Configuration Status      ")
       print("========================================")
       active_de = "None"
       for de_name, info in DESKTOP_ENVIRONMENTS.items():
@@ -109,7 +122,8 @@ pkgs.writers.writePython3Bin "xcnix" {
       print("\n⚡ Enabled System Modules:")
       has_modules = False
       for mod_name, config_line in SPECIAL_MODULES.items():
-          if config_line.strip() in content and f"# {config_line.strip()}" not in content:
+          if (config_line.strip() in content and 
+                  f"# {config_line.strip()}" not in content):
               print(f"  - {mod_name}")
               has_modules = True
       if not has_modules:
@@ -124,9 +138,12 @@ pkgs.writers.writePython3Bin "xcnix" {
       declared_pkgs = []
       for idx in range(start, end + 1):
           line = lines[idx].strip()
-          if "environment.systemPackages" in line or line.startswith("#") or line in ["[", "]", "];", "with pkgs;"]:
+          if ( "environment.systemPackages" in line 
+                  or line.startswith("#") 
+                  or line in ["[", "]", "];", "with pkgs;"]):
               continue
-          pkg = line.replace("with pkgs;", "").replace("[", "").replace("]", "").replace(";", "").strip()
+          pkg = line.replace("with pkgs;", "")
+          pkg = pkg.replace("[", "").replace("]", "").replace(";", "").strip()
           if pkg:
               for sub_pkg in pkg.split():
                   declared_pkgs.append(sub_pkg)
@@ -137,12 +154,13 @@ pkgs.writers.writePython3Bin "xcnix" {
           print("  (No active packages explicitly declared)")
       print("========================================")
 
+
   def install_package(package_name):
       lines = load_config()
       pkg_lower = package_name.lower()
       if pkg_lower in SPECIAL_MODULES:
           target_line = SPECIAL_MODULES[pkg_lower]
-          if any(target_line.strip() == l.strip() for l in lines):
+          if any(target_line.strip() == item.strip() for item in lines):
               print(f"'{package_name}' module is already enabled.")
               return False
           for i in range(len(lines) - 1, -1, -1):
@@ -156,7 +174,7 @@ pkgs.writers.writePython3Bin "xcnix" {
           sys.exit(1)
       start, end = find_system_packages_bounds(lines)
       if start == -1 or end == -1:
-          print("Error: Could not locate standard environment.systemPackages block.")
+          print("Error: Could not locate standard systemPackages block.")
           return False
       for idx in range(start, end + 1):
           if package_name in lines[idx].split():
@@ -169,6 +187,7 @@ pkgs.writers.writePython3Bin "xcnix" {
       save_config(lines)
       print(f"Successfully added '{package_name}' to systemPackages!")
       return True
+
 
   def uninstall_package(package_name):
       lines = load_config()
@@ -203,23 +222,24 @@ pkgs.writers.writePython3Bin "xcnix" {
               modified = True
               break
       if modified:
-          lines = [l for l in lines if l.strip() != ""]
+          lines = [item for item in lines if item.strip() != ""]
           save_config(lines)
-          print(f"Successfully uninstalled '{package_name}' from systemPackages!")
+          print(f"Successfully uninstalled '{package_name}'!")
           return True
       print(f"'{package_name}' was not found active in your configuration.")
       return False
 
+
   def set_desktop_environment(target_de):
       target_de = target_de.lower()
       if target_de not in DESKTOP_ENVIRONMENTS:
-          print(f"❌ Error: Desktop Environment '{target_de}' is not supported.")
+          print(f"❌ Error: Desktop Environment '{target_de}' not supported.")
           return False
       lines = load_config()
       for de_name, info in DESKTOP_ENVIRONMENTS.items():
           sig = info["signature"]
-          lines = [l for l in lines if sig not in l]
-      new_block = [f"\n  # Added by xcnix\n"] + DESKTOP_ENVIRONMENTS[target_de]["lines"]
+          lines = [item for item in lines if sig not in item]
+      new_block = ["\n  # Added by xcnix\n"] + DESKTOP_ENVIRONMENTS[target_de]["lines"]
       for i in range(len(lines) - 1, -1, -1):
           if "}" in lines[i]:
               lines.insert(i, "".join(new_block))
@@ -228,8 +248,10 @@ pkgs.writers.writePython3Bin "xcnix" {
       print(f"✨ Successfully set system desktop environment to {target_de}!")
       return True
 
+
   def prompt_rebuild():
-      choice = input("Do you want to rebuild config now? [y/N]: ").strip().lower()
+      msg = "Do you want to rebuild config now? [y/N]: "
+      choice = input(msg).strip().lower()
       if choice in ['y', 'yes']:
           print("Running: nixos-rebuild switch...")
           try:
@@ -240,6 +262,7 @@ pkgs.writers.writePython3Bin "xcnix" {
                   shutil.copyfile(BACKUP_PATH, CONFIG_PATH)
                   print("🔄 Backup configuration successfully restored.")
 
+
   if __name__ == "__main__":
       if len(sys.argv) > 1 and sys.argv[1] in ["--version", "-v"]:
           print(VERSION)
@@ -248,7 +271,11 @@ pkgs.writers.writePython3Bin "xcnix" {
           list_everything()
           sys.exit(0)
       if len(sys.argv) < 3:
-          print("Usage:\n  sudo xcnix install <package_name>\n  sudo xcnix uninstall <package_name>\n  sudo xcnix set-de <gnome/kde/xfce>\n  xcnix list")
+          print("Usage:")
+          print("  sudo xcnix install <package_name>")
+          print("  sudo xcnix uninstall <package_name>")
+          print("  sudo xcnix set-de <gnome/kde/xfce>")
+          print("  xcnix list")
           sys.exit(1)
       action, target = sys.argv[1], sys.argv[2]
       if action == "install" and install_package(target):
