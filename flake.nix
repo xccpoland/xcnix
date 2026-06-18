@@ -1,31 +1,47 @@
 {
-  description = "xcnix the lightweight package-manager-ish helping daemon for configuration.nix";
+  description = "xcnix - A robust deployment engine for NixOS";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: 
+  outputs = { self, nixpkgs }:
     let
-      # Supported architectures
+      # System types to support (Helios laptop is x86_64-linux)
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       
-      # Helper function to generate attributes for each architecture system
+      # Helper function to generate attributes for each system
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-    in {
-      # 1. Define the actual package output
+    in
+    {
+      # 1. This lets people install or run it directly
       packages = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          pythonScript = builtins.readFile ./xcnix.py;
-        in {
-          default = pkgs.writers.writePython3Bin "xcnix" { libraries = [ ]; } pythonScript;
-        }
-      );
+        in
+        {
+          default = pkgs.writers.writePython3Bin "xcnix" {
+            # Add any external pip packages your script needs here
+            libraries = with pkgs.python3Packages; [
+              # requests
+              # rich
+            ];
+          } (builtins.readFile ./xcnix.py);
+        });
 
-      # 2. Define a reusable NixOS Module overlay so other systems can import it instantly
-      overlays.default = self: super: {
-        xcnix = self.callPackage ({ pkgs }: self.packages.${pkgs.system}.default) {};
-      };
+      # 2. This lets you test it locally in a development shell
+      devShells = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShell {
+            buildInputs = [
+              (pkgs.python3.withPackages (ps: with ps; [
+                # Match the same libraries here for your dev environment
+              ]))
+            ];
+          };
+        });
     };
 }
