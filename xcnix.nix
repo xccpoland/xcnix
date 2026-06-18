@@ -48,7 +48,7 @@ pkgs.writers.writePython3Bin "xcnix" {
   def verify_package(package_name):
       pkg_lower = package_name.lower()
       if pkg_lower in SPECIAL_MODULES or pkg_lower in DESKTOP_ENVIRONMENTS:
-          return True 
+          return True
       print(f"Checking if '{package_name}' exists in nixpkgs...")
       try:
           if shutil.which("nix-search"):
@@ -122,7 +122,7 @@ pkgs.writers.writePython3Bin "xcnix" {
       print("\n⚡ Enabled System Modules:")
       has_modules = False
       for mod_name, config_line in SPECIAL_MODULES.items():
-          if (config_line.strip() in content and 
+          if (config_line.strip() in content and
                   f"# {config_line.strip()}" not in content):
               print(f"  - {mod_name}")
               has_modules = True
@@ -138,8 +138,8 @@ pkgs.writers.writePython3Bin "xcnix" {
       declared_pkgs = []
       for idx in range(start, end + 1):
           line = lines[idx].strip()
-          if ( "environment.systemPackages" in line 
-                  or line.startswith("#") 
+          if ("environment.systemPackages" in line
+                  or line.startswith("#")
                   or line in ["[", "]", "];", "with pkgs;"]):
               continue
           pkg = line.replace("with pkgs;", "")
@@ -239,7 +239,10 @@ pkgs.writers.writePython3Bin "xcnix" {
       for de_name, info in DESKTOP_ENVIRONMENTS.items():
           sig = info["signature"]
           lines = [item for item in lines if sig not in item]
-      new_block = ["\n  # Added by xcnix\n"] + DESKTOP_ENVIRONMENTS[target_de]["lines"]
+      new_block = (
+          ["\n  # Added by xcnix\n"] +
+          DESKTOP_ENVIRONMENTS[target_de]["lines"]
+      )
       for i in range(len(lines) - 1, -1, -1):
           if "}" in lines[i]:
               lines.insert(i, "".join(new_block))
