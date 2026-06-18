@@ -4,7 +4,8 @@ pkgs.runCommand "xcnix" {
   buildInputs = [ pkgs.python3 ];
 } ''
   mkdir -p $out/bin
-  cat << 'EOF' > $out/bin/xcnix
+  # Removing the single quotes from EOF lets Nix inject the real path
+  cat << EOF > $out/bin/xcnix
   #!${pkgs.python3}/bin/python3
   import sys
   import os
