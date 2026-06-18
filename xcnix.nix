@@ -5,7 +5,7 @@ pkgs.runCommand "xcnix" {
 } ''
   mkdir -p $out/bin
   cat << 'EOF' > $out/bin/xcnix
-  #!/usr/bin/env python3
+  #!${pkgs.python3}/bin/python3
   import sys
   import os
   import subprocess
