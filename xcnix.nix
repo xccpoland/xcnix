@@ -1,4 +1,4 @@
- { pkgs, ... }:
+{ pkgs, ... }:
 
 pkgs.runCommand "xcnix" {
   buildInputs = [ pkgs.python3 ];
@@ -42,8 +42,12 @@ pkgs.runCommand "xcnix" {
           "signature": "services.xserver.desktopManager.xfce.enable",
           "lines": [
               "  services.xserver.enable = true;\n",
-              "  services.xserver.desktopManager.xfce.enable = true;\ 
-     def verify_package(package_name):
+              "  services.xserver.desktopManager.xfce.enable = true;\n"
+          ]
+      }
+  }
+
+  def verify_package(package_name):
       pkg_lower = package_name.lower()
       if pkg_lower in SPECIAL_MODULES or pkg_lower in DESKTOP_ENVIRONMENTS:
           return True 
@@ -93,47 +97,14 @@ pkgs.runCommand "xcnix" {
       return start_idx, end_idx
 
   def list_everything():
-      lines = load_config()
-      content = "".join(lines)
       print("========================================")
-      print(f"       System Configuration Status      ")
+      print("          AVAILABLE COMMANDS            ")
       print("========================================")
-      active_de = "None"
-      for de_name, info in DESKTOP_ENVIRONMENTS.items():
-          sig = info["signature"]
-          if sig in content and f"# {sig}" not in content:
-              active_de = de_name.upper()
-              break
-      print(f"🖥️  Desktop Environment: {active_de}")
-      print("\n⚡ Enabled System Modules:")
-      has_modules = False
-      for mod_name, config_line in SPECIAL_MODULES.items():
-          if config_line.strip() in content and f"# {config_line.strip()}" not in content:
-              print(f"  - {mod_name}")
-              has_modules = True
-      if not has_modules:
-          print("  (None)")
-      print("\n📦 Declared System Packages:")
-      start, end = find_system_packages_bounds(lines)
-      if start == -1 or end == -1:
-          print("  (Could not locate systemPackages block configuration)")
-          print("========================================")
-          return
-      has_packages = False
-      declared_pkgs = []
-      for idx in range(start, end + 1):
-          line = lines[idx].strip()
-          if "environment.systemPackages" in line or line.startswith("#") or line in ["[", "]", "];", "with pkgs;"]:
-              continue
-          pkg = line.replace("with pkgs;", "").replace("[", "").replace("]", "").replace(";", "").strip()
-          if pkg:
-              for sub_pkg in pkg.split():
-                  declared_pkgs.append(sub_pkg)
-                  has_packages = True
-      for pkg in sorted(declared_pkgs):
-          print(f"  - {pkg}")
-      if not has_packages:
-          print("  (No active packages explicitly declared)")
+      print("  xcnix list                  - Show this help menu")
+      print("  sudo xcnix install <pkg>    - Install a package or module")
+      print("  sudo xcnix uninstall <pkg>  - Remove a package or module")
+      print("  sudo xcnix set-de <de>      - Set DE (gnome, kde, xfce)")
+      print("  xcnix --version             - Show version info")
       print("========================================")
 
   def install_package(package_name):
@@ -191,8 +162,8 @@ pkgs.runCommand "xcnix" {
           print("Error: Could not locate systemPackages block.")
           return False
       modified = False
-      for idx in range(start, end + 1):
-          words = lines[idx].split()
+      for idx, line in enumerate(lines):
+          words = line.split()
           if package_name in words:
               words.remove(package_name)
               if not words or (len(words) == 1 and words[0] in ["[", "]"]):
@@ -247,7 +218,7 @@ pkgs.runCommand "xcnix" {
           list_everything()
           sys.exit(0)
       if len(sys.argv) < 3:
-          print("Usage:\n  sudo xcnix install <package_name>\n  sudo xcnix uninstall <package_name>\n  sudo xcnix set-de <gnome/kde/xfce>\n  xcnix list")
+          list_everything()
           sys.exit(1)
       action, target = sys.argv[1], sys.argv[2]
       if action == "install" and install_package(target):
